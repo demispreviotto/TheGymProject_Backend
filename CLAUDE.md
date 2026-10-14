@@ -216,3 +216,23 @@ Commit attribution rules are in `.clouderule` — never add Claude/Anthropic co-
 - [ ] New config documented in `.env.example` and `config.go`
 - [ ] New dependency justified; no dead code left behind
 - [ ] Metrics/logs added for new I/O paths
+
+---
+
+## 8. Working Agreement (how to approach any change)
+
+### Before coding
+- **Stop and ask on critical paths.** If a change touches authentication, authorization/tenant scoping, JWT handling, the DB role, money-like or irreversible operations, or anything in the Hard Stops table: state your assumptions and ask *before* writing code. Elsewhere, pick the sensible default, mention it, and proceed.
+- **Test first for behaviour.** For a bug, write a failing test that reproduces it. For a new endpoint or service rule, write the test that states the requirement. Then make `go test -race ./...` pass. Tests assert behaviour, never implementation details.
+
+### While coding
+- **Surgical diffs.** Touch only what the goal requires. Do not reformat, rename or refactor adjacent code. If you notice an unrelated problem, *report it in your reply* instead of fixing it silently.
+- **Stop at the first rung that works:**
+  1. Does it need to exist for the current milestone? If not, don't build it (no speculative abstraction).
+  2. Can the standard library or the existing code do it?
+  3. Can an already-present dependency do it? A new dependency needs a stated reason.
+  4. Write the simplest code that satisfies the requirement: no factories, option structs or interfaces without a consumer.
+- **Interfaces:** add one only where a layer consumes it *and* it is faked in tests or has a second implementation. Do not mirror every struct with an interface.
+
+### Scope note
+YAGNI applies to code *within* a milestone. The infrastructure milestones themselves (cache, queue, replicas, sharding) are intentional learning goals, not speculative features.
