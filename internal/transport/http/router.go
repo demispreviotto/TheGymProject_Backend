@@ -23,7 +23,7 @@ type Pinger interface {
 	Ping(ctx context.Context) error
 }
 
-func NewRouter(log *slog.Logger, cfg config.Config, db Pinger, profiles *service.ProfileService) http.Handler {
+func NewRouter(log *slog.Logger, cfg config.Config, db Pinger, verifier TokenVerifier, profiles *service.ProfileService) http.Handler {
 	r := chi.NewRouter()
 	r.Use(middleware.RequestID)
 	r.Use(middleware.Recoverer)
@@ -37,7 +37,7 @@ func NewRouter(log *slog.Logger, cfg config.Config, db Pinger, profiles *service
 	r.Handle("/metrics", promhttp.Handler())
 
 	r.Route("/v1", func(r chi.Router) {
-		r.Use(requireAuth(cfg.SupabaseJWTKey))
+		r.Use(requireAuth(verifier))
 		r.Get("/me", meHandler(profiles))
 	})
 	return r

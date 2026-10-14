@@ -14,6 +14,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/demispreviotto/gymproject-backend/internal/auth"
 	"github.com/demispreviotto/gymproject-backend/internal/config"
 	"github.com/demispreviotto/gymproject-backend/internal/repository"
 	"github.com/demispreviotto/gymproject-backend/internal/service"
@@ -45,13 +46,15 @@ func run(log *slog.Logger) error {
 	}
 	defer pool.Close()
 
+	verifier := auth.NewVerifier(cfg.SupabaseJWKSURL, "authenticated")
+
 	// repository → service → transport: each layer only knows the one below.
 	profiles := repository.NewProfileRepository(pool)
 	profileSvc := service.NewProfileService(profiles)
 
 	srv := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           transport.NewRouter(log, cfg, pool, profileSvc),
+		Handler:           transport.NewRouter(log, cfg, pool, verifier, profileSvc),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       15 * time.Second,
 		WriteTimeout:      30 * time.Second,
