@@ -6,7 +6,7 @@ Single source of truth for the **TheGymProject Backend** (Go). All generated cod
 
 ## Current Development State
 
-**Active phase:** Milestone 0 — scaffold. The API builds and exposes `/healthz`, `/readyz`, `/metrics` and `GET /v1/me`.
+**Active phase:** Milestone 0 — scaffold, verified end to end against local Supabase (`GET /v1/me` for all four seeded roles). Next: tests/CI hardening, then Milestone 1.
 
 | Milestone | Status | Summary |
 |-----------|--------|---------|
@@ -32,7 +32,7 @@ Single source of truth for the **TheGymProject Backend** (Go). All generated cod
 | Action | Command |
 |--------|---------|
 | Run API | `make run` (or `go run ./cmd/api`) |
-| Test | `make test` (`go test ./... -race -cover`) |
+| Test | `make test` (`go test ./... -race -cover`; `-race` needs cgo/gcc, on Windows use `go test ./...`) |
 | Vet | `make lint` (`go vet ./...`) |
 | Format | `gofmt -w .` |
 | Tidy deps | `make tidy` |
@@ -81,7 +81,7 @@ Deployment state is **not recorded in this file**; check the source of truth (`g
 - **Language:** Go (module `github.com/demispreviotto/gymproject-backend`)
 - **HTTP:** `net/http` + `chi` router
 - **DB:** PostgreSQL (Supabase) via `pgx/v5` + `pgxpool`; plain SQL, no ORM
-- **Auth:** Supabase-issued JWT (HS256 now; JWKS when moving to asymmetric keys)
+- **Auth:** Supabase-issued ES256 JWT, verified against the project's JWKS endpoint (`internal/auth`, stdlib only; refetches on unknown `kid`, rate-limited)
 - **Observability:** `log/slog` JSON logs, Prometheus metrics, Grafana (traces via OpenTelemetry later)
 - **Packaging:** multi-stage Dockerfile → distroless static image
 - **Frontend contract:** the Angular app calls this API with the user's Supabase access token as `Authorization: Bearer`.
@@ -173,7 +173,7 @@ Same policy as the frontend: additive schema changes first, old shape still serv
 ## 4. Security Notes
 
 - **Authorization is this service's job.** The DB role bypasses RLS. Every read/write must filter by the authenticated `sub` and, where relevant, tenant — and must be covered by a test that proves another user cannot read it.
-- **JWT validation:** enforce algorithm allow-list, `exp` required, `aud=authenticated`. Never accept `alg: none`. Never log tokens.
+- **JWT validation:** ES256 only (allow-list), `exp` required, `aud=authenticated`, key selected by `kid` from JWKS. Never accept `alg: none` or HS256. Never log tokens.
 - **Secrets** come from environment only; `.env` is git-ignored. Never commit real keys; `.env.example` holds placeholders.
 - **CORS** is an allow-list of the frontend origin, never `*` when credentials/Authorization are used.
 - **Input:** bound request body size, validate and normalise at the transport edge, reject unknown fields on write endpoints.

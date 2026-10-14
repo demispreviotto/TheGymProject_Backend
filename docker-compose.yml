@@ -5,6 +5,9 @@ services:
     build: .
     ports: ["8080:8080"]
     env_file: .env
+    environment:
+      DATABASE_URL: postgres://postgres:postgres@host.docker.internal:54322/postgres
+      SUPABASE_JWKS_URL: http://host.docker.internal:54321/auth/v1/.well-known/jwks.json
     extra_hosts: ["host.docker.internal:host-gateway"]
 
   prometheus:

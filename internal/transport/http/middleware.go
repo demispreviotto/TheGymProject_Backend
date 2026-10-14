@@ -10,7 +10,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -24,27 +23,27 @@ func userIDFrom(ctx context.Context) string {
 	return id
 }
 
-// requireAuth validates a Supabase-issued HS256 JWT and stores `sub` in the context.
-func requireAuth(secret string) func(http.Handler) http.Handler {
-	key := []byte(secret)
+// TokenVerifier validates an access token and returns its subject (user id).
+type TokenVerifier interface {
+	Verify(ctx context.Context, rawToken string) (string, error)
+}
+
+// requireAuth rejects requests without a valid bearer token and stores the
+// token subject in the request context.
+func requireAuth(verifier TokenVerifier) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			raw, ok := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
-			if !ok {
+			if !ok || raw == "" {
 				writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "missing bearer token"})
 				return
 			}
-			claims := jwt.RegisteredClaims{}
-			_, err := jwt.ParseWithClaims(raw, &claims, func(*jwt.Token) (any, error) { return key, nil },
-				jwt.WithValidMethods([]string{"HS256"}),
-				jwt.WithAudience("authenticated"),
-				jwt.WithExpirationRequired(),
-			)
-			if err != nil || claims.Subject == "" {
+			sub, err := verifier.Verify(r.Context(), raw)
+			if err != nil {
 				writeJSON(w, http.StatusUnauthorized, map[string]string{"error": "invalid token"})
 				return
 			}
-			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), userIDKey, claims.Subject)))
+			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), userIDKey, sub)))
 		})
 	}
 }
