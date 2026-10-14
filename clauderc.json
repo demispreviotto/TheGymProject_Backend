@@ -1,0 +1,5 @@
+{
+    "memory": {
+        "instructions": "This is a layered Go HTTP API (chi + pgx) that sits beside an Angular + Supabase app. Follow CLAUDE.md strictly. Key rules: dependency direction is transport -> service -> domain and repository -> domain; service defines the interfaces it needs and never imports repository/pgx/net/http; context.Context first param; wrap errors with %w and map domain errors to HTTP only in transport; plain parameterised SQL, no ORM; the DB role bypasses RLS so authorization must be enforced in the service layer; never change database schema here (migrations live in the frontend repo); no panics, no global state; code must pass gofmt, go vet and go test -race. Never run deploy or production commands without explicit confirmation. Never add Claude/Anthropic attribution to commits."
+    }
+}

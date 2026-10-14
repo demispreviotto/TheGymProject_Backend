@@ -1,0 +1,18 @@
+# Local stack. The API talks to the Supabase local Postgres (port 54322, started
+# from the frontend repo with `pnpm exec supabase start`), reached via host.docker.internal.
+services:
+  api:
+    build: .
+    ports: ["8080:8080"]
+    env_file: .env
+    extra_hosts: ["host.docker.internal:host-gateway"]
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    volumes: ["./infra/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro"]
+    ports: ["9090:9090"]
+
+  grafana:
+    image: grafana/grafana:11.3.0
+    ports: ["3000:3000"]
+    depends_on: [prometheus]
